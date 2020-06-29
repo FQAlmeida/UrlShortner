@@ -1,0 +1,43 @@
+version: "3.7"
+
+services:
+    url_shortner_database:
+        container_name: url_shortner_database
+        build:
+            context: ./database
+            dockerfile: Dockerfile
+        restart: always
+        environment:
+            POSTGRES_USER_FILE: /run/secrets/user
+            POSTGRES_PASSWORD_FILE: /run/secrets/password
+            POSTGRES_DATA: /var/lib/postgresql/data/pgdata
+        volumes:
+            - url_shortner_db:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        secrets:
+            - user
+            - password
+
+    url_shortner:
+        container_name: url_shortner 
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: always
+        volumes: 
+            - .:/app
+            - /app/node_modules
+        ports: 
+            - "8080:8080"
+        depends_on: 
+            - url_shortner_database
+
+secrets:
+    user:
+        file: secrets/username.txt
+    password:
+        file: secrets/password.txt
+
+volumes: 
+    url_shortner_db:
