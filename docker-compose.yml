@@ -8,23 +8,30 @@ services:
             dockerfile: Dockerfile
         restart: always
         environment:
-            POSTGRES_USER_FILE: /run/secrets/user
-            POSTGRES_PASSWORD_FILE: /run/secrets/password
-            POSTGRES_DATA: /var/lib/postgresql/data/pgdata
-        volumes:
-            - url_shortner_db:/var/lib/postgresql/data
-        ports:
-            - "5432:5432"
+            MONGO_INITDB_ROOT_USERNAME_FILE: /run/secrets/username
+            MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/password
+            MONGO_INITDB_DATABASE: $DB_NAME
+            MONGO_INITDB_USERNAME: $DB_USER
+            MONGO_INITDB_PASSWORD: $DB_PASSWORD
         secrets:
-            - user
+            - username
             - password
+        volumes:
+            - url_shortner_db:/data/db
+        ports: 
+            - "27017:27017"
 
     url_shortner:
-        container_name: url_shortner 
+        container_name: url_shortner
         build:
             context: .
             dockerfile: Dockerfile
         restart: always
+        environment: 
+            DB_HOST: $DB_HOST 
+            DB_NAME: $DB_NAME
+            DB_USER: $DB_USER
+            DB_PASSWORD: $DB_PASSWORD
         volumes: 
             - .:/app
             - /app/node_modules
@@ -33,8 +40,24 @@ services:
         depends_on: 
             - url_shortner_database
 
+    url_shortner_database_interface:
+        container_name: url_shortner_database_interface
+        image: mongo-express
+        restart: always
+        ports:
+            - 8081:8081
+        environment:
+            ME_CONFIG_MONGODB_SERVER: url_shortner_database 
+            ME_CONFIG_MONGODB_ADMINUSERNAME_FILE: /run/secrets/username
+            ME_CONFIG_MONGODB_ADMINPASSWORD_FILE: /run/secrets/password
+        depends_on: 
+            - url_shortner_database
+        secrets:
+            - username
+            - password
+
 secrets:
-    user:
+    username:
         file: secrets/username.txt
     password:
         file: secrets/password.txt

@@ -1,1 +1,3 @@
-FROM postgres:12
+FROM mongo
+
+ADD init-db.sh /docker-entrypoint-initdb.d/
