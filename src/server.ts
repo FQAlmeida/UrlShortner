@@ -43,6 +43,23 @@ const postSchema = object<{
         .min(7, min => `password should be bigger than ${min} characters`)
 }).required().default({});
 
+const putSchema = object<{
+    destiny: string,
+    username: string,
+    password: string
+}>({
+    destiny: string()
+        .required("destiny is required")
+        .transform((value: string) => value.toLowerCase().trim())
+        .url("destiny should be a url with protocol"),
+    username: string()
+        .required("username is required")
+        .min(5, min => `username should be bigger than ${min} characters`),
+    password: string()
+        .required("password is required")
+        .min(7, min => `password should be bigger than ${min} characters`)
+}).required().default({});
+
 const app = express();
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({
@@ -100,7 +117,6 @@ app.post("/", async (req, resp) => {
     }).catch((err) => {
         resp.send({ errors: err.errors });
     });
-
 });
 
 app.get("/:alias", async (req, resp) => {
@@ -115,15 +131,34 @@ app.get("/:alias", async (req, resp) => {
     });
 });
 
-app.put("/:alias", (req, resp) => {
+app.put("/:alias", async (req, resp) => {
     const alias = req.params["alias"];
     const data = req.body;
 
-    // check payload
-    // check if alias in db
-    // if in db, update destiny
-    // else, send 400
-    resp.sendStatus(202);
+    // Check if body is valid
+    await putSchema.validate(data, { abortEarly: false }).then(async ({ destiny, username, password }) => {
+        // check if alias in db
+        await users.findOne({ username, password }).then(async (user) => {
+            if (user) {
+                await urls_shorts.findOne({ alias }).then(async (short_url) => {
+                    if (short_url) {
+                        // if in db, update destiny
+                        await urls_shorts.update({ alias }, { alias, destiny })
+                        resp.sendStatus(202);
+                    } else {
+                        // else, send 400
+                        resp.status(400).send({ error: "Alias not found 😵" });
+                    }
+                })
+            } else {
+                // Not authed, return not authorized
+                resp.sendStatus(401);
+            }
+        })
+    }).catch((err) => {
+        resp.send({ errors: err.errors });
+    });
+
 });
 
 app.get("/", (req, resp) => {
